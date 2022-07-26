@@ -85,6 +85,7 @@ void split(char *infn, char *outpref, int nchunks)
     if (types.isNull()) types = innc.getVar("atom_types");
     const NcVar &coordinates = innc.getVar("coordinates");
     const NcVar &velocities = innc.getVar("velocities");
+    const NcVar &time = innc.getVar("time");
 
     if (cell_spatial.getSize() != 3) {
         printf("'cell_spatial' dimension differs from 3.\n");
@@ -170,6 +171,7 @@ void split(char *infn, char *outpref, int nchunks)
         const NcDim &out_atom = outnc.addDim("atom", atom.getSize());
         const NcDim &out_spatial = outnc.addDim("spatial", spatial.getSize());
 
+        const NcVar &out_time = outnc.addVar("time", time.getType(), {out_frame});
         const NcVar &out_cell_lengths = outnc.addVar("cell_lengths", cell_lengths.getType(), {out_frame, out_cell_spatial});
         const NcVar &out_cell_angles = outnc.addVar("cell_angles", cell_angles.getType(), {out_frame, out_cell_angular});
         const NcVar &out_cell_origin = outnc.addVar("cell_origin", cell_origin.getType(), {out_frame, out_cell_spatial});
@@ -189,6 +191,7 @@ void split(char *infn, char *outpref, int nchunks)
 
         double vec[3];
         std::vector<int> intScalarChunk(chunksize);
+        std::vector<double> doubleScalarChunk(chunksize);
         std::vector<double> doubleVectorChunk(chunksize*3);
 
         size_t out_frame_index = 0;
@@ -218,6 +221,10 @@ void split(char *infn, char *outpref, int nchunks)
                         natoms, intScalarChunk.data());
             copyvar("coordinates", coordinates, start, out_coordinates,
                     out_start, count, natoms, doubleVectorChunk.data());
+            copyvar("time", time, start, out_time,
+                    out_start, count, natoms, doubleScalarChunk.data());
+
+
             if (!velocities.isNull())
                 copyvar("velocities", velocities, start, out_velocities,
                         out_start, count, natoms, doubleVectorChunk.data());
