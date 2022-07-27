@@ -51,7 +51,7 @@ template <typename T>
 void copyvar(const char *name, const NcVar &in_var,
              std::vector<size_t> &in_start, const NcVar &out_var,
              std::vector<size_t> &out_start, std::vector<size_t> &count,
-             size_t natoms, T *buffer, int atom_dim=1)
+             size_t natoms, T *buffer, int atom_dim=1, double scale_factor=1.)
 {
     size_t chunkstart = 0;
     while (chunkstart < natoms) {
@@ -61,6 +61,13 @@ void copyvar(const char *name, const NcVar &in_var,
         count[atom_dim] = std::min(chunksize, natoms-chunkstart);
 
         in_var.getVar(in_start, count, buffer);
+        *buffer *= scale_factor;
+        // std::cout << buffer[0] << std::endl;
+
+        // for (size_t j=0; j<20; j++){
+        //     buffer[j] *= scale_factor;
+        // }
+
         out_var.putVar(out_start, count, buffer);
 
         chunkstart += chunksize;
@@ -86,6 +93,9 @@ void split(char *infn, char *outpref, int nchunks)
     const NcVar &coordinates = innc.getVar("coordinates");
     const NcVar &velocities = innc.getVar("velocities");
     const NcVar &time = innc.getVar("time");
+    const NcVarAtt &timestep = time.getAtt("scale_factor");
+    double dt;
+    timestep.getValues(&dt);
 
     if (cell_spatial.getSize() != 3) {
         printf("'cell_spatial' dimension differs from 3.\n");
@@ -221,9 +231,9 @@ void split(char *infn, char *outpref, int nchunks)
                         natoms, intScalarChunk.data());
             copyvar("coordinates", coordinates, start, out_coordinates,
                     out_start, count, natoms, doubleVectorChunk.data());
-            copyvar("time", time, start, out_time,
-                    out_start, count, natoms, doubleScalarChunk.data());
 
+            copyvar("time", time, start, out_time,
+                    out_start, count, natoms, doubleScalarChunk.data(), 1, dt);
 
             if (!velocities.isNull())
                 copyvar("velocities", velocities, start, out_velocities,
